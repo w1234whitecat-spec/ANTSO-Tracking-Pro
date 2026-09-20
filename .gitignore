@@ -1,0 +1,83 @@
+# =====================================================
+# Fichiers SENSIBLES — NE JAMAIS PUBLIER
+# =====================================================
+mdp.txt
+config.js
+config.example.js
+.env
+.env.local
+secrets.js
+*.key
+*.pem
+
+# =====================================================
+# Notes et fichiers personnels
+# =====================================================
+*.txt
+*.docx
+*.xlsx
+*.csv
+*.pdf
+
+# =====================================================
+# Backups et doublons
+# =====================================================
+_backup/
+_backup_github/
+*.before-firebase
+index1.html
+*.backup
+
+# =====================================================
+# Fichiers OS
+# =====================================================
+.DS_Store
+Thumbs.db
+.~lock.*
+*~
+
+# =====================================================
+# IDE / Éditeurs
+# =====================================================
+.vscode/
+.idea/
+*.swp
+
+# =====================================================
+# Logs
+# =====================================================
+*.log
+
+# =====================================================
+# Fichiers de développement React (pas nécessaires)
+# =====================================================
+components_*.jsx
+components_*.css
+hooks_*.js
+tests_*.js
+tests_*.jsx
+ponents_*.jsx
+services_firebase.js
+deepseek_javascript_*.js
+professionnel.js
+styles-professionnel.css
+vite.config.js
+public_manifest.json
+process_cells.py
+scripts_download_opencellid.py
+
+# =====================================================
+# Dépendances
+# =====================================================
+node_modules/
+
+# =====================================================
+# Fichiers supplémentaires à ignorer
+# =====================================================
+hooks-*.js
+components-*.jsx
+*.sh
+README
+Mise à jour du package.json
+*Worker*
+*worker*
