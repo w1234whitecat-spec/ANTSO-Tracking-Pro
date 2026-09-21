@@ -909,115 +909,101 @@ window.dispatchEvent(new Event('firebase-ready'));
         function showAuth(show) { document.getElementById('auth-modal').classList.toggle('visible', show); }
 
         async function handleLogin(email, password) {
-    const btn = document.getElementById('auth-btn');
-    const errorEl = document.getElementById('auth-error');
-    
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
-    errorEl.classList.remove('visible');
-    
-    try {
-        if (!window.firebaseAuth) {
-            throw new Error('Firebase non initialisé');
-        }
-        
-        const userCredential = await window.firebaseSignIn(window.firebaseAuth, email, password);
-        const user = userCredential.user;
-        
-        // Connexion réussie sans MFA
-        AppState.isAuthenticated = true;
-        showAuth(false);
-        showApp(true);
-        document.getElementById('user-name').textContent = user.email.split('@')[0];
-        showNotification('✅ Connecté avec succès', 'success');
-        loadData();
-        
-        setTimeout(function() {
-            var loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) loadingScreen.classList.add('hidden');
-        }, 2000);
-        
-        return true;
-        
-    } catch (error) {
-        // 🔐 GESTION MFA : l'utilisateur a activé la 2FA
-        if (error.code === 'auth/multi-factor-auth-required') {
-            console.log('🔐 MFA requis');
+            const btn = document.getElementById('auth-btn');
+            const errorEl = document.getElementById('auth-error');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
+            errorEl.classList.remove('visible');
             
             try {
-                const resolver = window.getMultiFactorResolver(window.firebaseAuth, error);
-                const hint = resolver.hints[0];
-                
-                // Demander le code SMS
-                const verificationCode = prompt('📱 Entrez le code SMS reçu sur votre téléphone :');
-                if (!verificationCode) {
-                    errorEl.classList.add('visible');
-                    errorEl.textContent = '❌ MFA annulé';
-                    return false;
+                if (!window.firebaseAuth) {
+                    throw new Error('Firebase non initialisé');
                 }
                 
-                // Vérifier le numéro
-                const recaptchaVerifier = new window.RecaptchaVerifier(
-                    window.firebaseAuth, 
-                    'recaptcha-container', 
-                    { size: 'invisible' }
-                );
-                
-                const phoneInfoOptions = {
-                    multiFactorHint: hint,
-                    session: resolver.session
-                };
-                
-                const phoneAuthProvider = new window.PhoneAuthProvider(window.firebaseAuth);
-                const verificationId = await phoneAuthProvider.verifyPhoneNumber(
-                    phoneInfoOptions, 
-                    recaptchaVerifier
-                );
-                
-                // Créer les credentials
-                const cred = window.PhoneAuthProvider.credential(verificationId, verificationCode);
-                const multiFactorAssertion = window.PhoneMultiFactorGenerator.assertion(cred);
-                
-                // Compléter la connexion
-                const result = await resolver.resolveSignIn(multiFactorAssertion);
-                const user = result.user;
+                const userCredential = await window.firebaseSignIn(window.firebaseAuth, email, password);
+                const user = userCredential.user;
                 
                 AppState.isAuthenticated = true;
                 showAuth(false);
                 showApp(true);
                 document.getElementById('user-name').textContent = user.email.split('@')[0];
-                showNotification('✅ MFA validé avec succès', 'success');
+                showNotification('✅ Connecté avec succès', 'success');
                 loadData();
+                
+                setTimeout(function() {
+                    var loadingScreen = document.getElementById('loading-screen');
+                    if (loadingScreen) loadingScreen.classList.add('hidden');
+                }, 2000);
                 
                 return true;
                 
-            } catch (mfaError) {
-                console.error('Erreur MFA:', mfaError);
+            } catch (error) {
+                if (error.code === 'auth/multi-factor-auth-required') {
+                    console.log('🔐 MFA requis');
+                    try {
+                        const resolver = window.getMultiFactorResolver(window.firebaseAuth, error);
+                        const hint = resolver.hints[0];
+                        const verificationCode = prompt('📱 Entrez le code SMS reçu sur votre téléphone :');
+                        if (!verificationCode) {
+                            errorEl.classList.add('visible');
+                            errorEl.textContent = '❌ MFA annulé';
+                            return false;
+                        }
+                        const recaptchaVerifier = new window.RecaptchaVerifier(window.firebaseAuth, 'recaptcha-container', { size: 'invisible' });
+                        const phoneInfoOptions = { multiFactorHint: hint, session: resolver.session };
+                        const phoneAuthProvider = new window.PhoneAuthProvider(window.firebaseAuth);
+                        const verificationId = await phoneAuthProvider.verifyPhoneNumber(phoneInfoOptions, recaptchaVerifier);
+                        const cred = window.PhoneAuthProvider.credential(verificationId, verificationCode);
+                        const multiFactorAssertion = window.PhoneMultiFactorGenerator.assertion(cred);
+                        const result = await resolver.resolveSignIn(multiFactorAssertion);
+                        const user = result.user;
+                        AppState.isAuthenticated = true;
+                        showAuth(false);
+                        showApp(true);
+                        document.getElementById('user-name').textContent = user.email.split('@')[0];
+                        showNotification('✅ MFA validé avec succès', 'success');
+                        loadData();
+                        return true;
+                    } catch (mfaError) {
+                        console.error('Erreur MFA:', mfaError);
+                        errorEl.classList.add('visible');
+                        errorEl.textContent = '❌ Code MFA incorrect';
+                        return false;
+                    }
+                }
+                
+                console.error('Erreur login:', error);
                 errorEl.classList.add('visible');
-                errorEl.textContent = '❌ Code MFA incorrect';
+                let errorMsg = '❌ Identifiants incorrects';
+                if (error.code === 'auth/user-not-found') errorMsg = '❌ Utilisateur introuvable';
+                else if (error.code === 'auth/wrong-password') errorMsg = '❌ Mot de passe incorrect';
+                else if (error.code === 'auth/invalid-email') errorMsg = '❌ Email invalide';
+                else if (error.code === 'auth/too-many-requests') errorMsg = '❌ Trop de tentatives. Réessayez plus tard.';
+                else if (error.code === 'auth/invalid-credential') errorMsg = '❌ Identifiants incorrects';
+                errorEl.textContent = errorMsg;
                 return false;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-unlock-alt"></i> Accéder';
             }
         }
-        
-        // Autres erreurs
-        console.error('Erreur login:', error);
-        errorEl.classList.add('visible');
-        
-        let errorMsg = '❌ Identifiants incorrects';
-        if (error.code === 'auth/user-not-found') errorMsg = '❌ Utilisateur introuvable';
-        else if (error.code === 'auth/wrong-password') errorMsg = '❌ Mot de passe incorrect';
-        else if (error.code === 'auth/invalid-email') errorMsg = '❌ Email invalide';
-        else if (error.code === 'auth/too-many-requests') errorMsg = '❌ Trop de tentatives. Réessayez plus tard.';
-        else if (error.code === 'auth/invalid-credential') errorMsg = '❌ Identifiants incorrects';
-        
-        errorEl.textContent = errorMsg;
-        return false;
-        
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-unlock-alt"></i> Accéder';
-    }
-}
+
+        // === AJOUT : Fonction handleLogout manquante ===
+        function handleLogout() {
+            if (window.firebaseAuth && window.firebaseSignOut) {
+                window.firebaseSignOut(window.firebaseAuth).then(() => {
+                    AppState.isAuthenticated = false;
+                    showAuth(true);
+                    showApp(false);
+                    showNotification('Déconnecté', 'info');
+                }).catch(err => console.error('Erreur logout:', err));
+            } else {
+                AppState.isAuthenticated = false;
+                showAuth(true);
+                showApp(false);
+            }
+        }
 
         // =====================================================
         // CHARGEMENT
@@ -1067,9 +1053,6 @@ window.dispatchEvent(new Event('firebase-ready'));
                 });
             
             console.log(`✅ ${AppState.cells.length} cellules uniques chargées (sur ${CELLS.length} brutes)`);
-            if (rejected.length > 0) {
-                console.warn(`⚠️ ${rejected.length} lignes malformées rejetées`);
-            }
             
             updateStats();
             updateAnalytics();
